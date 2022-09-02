@@ -54,7 +54,6 @@ class LaravelKeycloakServiceProvider extends ServiceProvider
         $routes = Config::get('keycloak-web.routes', []);
         $routes = array_merge($defaults, $routes);
 
-        // Register Routes
         $router = $this->app->make('router');
 
         if (! empty($routes['login'])) {

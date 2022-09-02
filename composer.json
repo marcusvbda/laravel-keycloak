@@ -11,5 +11,7 @@
             "marcusvbda\\LaravelKeycloak\\": "src/"
         }
     },
-    "require": {}
+    "require": {
+        "spatie/laravel-responsecache": "^7.4"
+    }
 }
