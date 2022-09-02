@@ -1,0 +1,15 @@
+{
+    "name": "marcusvbda/laravel-keycloak",
+    "authors": [
+        {
+            "name": "mvbassalobre",
+            "email": "bassalobre.vinicius@gmail.com"
+        }
+    ],
+    "autoload": {
+        "psr-4": {
+            "marcusvbda\\LaravelKeycloak\\": "src/"
+        }
+    },
+    "require": {}
+}
