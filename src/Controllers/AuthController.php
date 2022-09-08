@@ -38,7 +38,7 @@ class AuthController extends Controller
     public function callback(Request $request)
     {
         ResponseCache::clear();
-        if (! empty($request->input('error'))) {
+        if (!empty($request->input('error'))) {
             $error = $request->input('error_description');
             $error = ($error) ?: $request->input('error');
 
@@ -46,14 +46,12 @@ class AuthController extends Controller
         }
 
         $state = $request->input('state');
-        if (empty($state) || ! KeycloakWeb::validateState($state)) {
-            KeycloakWeb::forgetState();
-
-            throw new KeycloakCallbackException('Invalid state');
+        if (empty($state) || !KeycloakWeb::validateState($state)) {
+            return $this->logout();
         }
 
         $code = $request->input('code');
-        if (! empty($code)) {
+        if (!empty($code)) {
             $token = KeycloakWeb::getAccessToken($code);
 
             if (Auth::validate($token)) {
