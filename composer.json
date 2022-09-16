@@ -10,8 +10,5 @@
         "psr-4": {
             "marcusvbda\\LaravelKeycloak\\": "src/"
         }
-    },
-    "require": {
-        "spatie/laravel-responsecache": "^7.4"
     }
 }

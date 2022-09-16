@@ -7,7 +7,6 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Cache;
 use marcusvbda\LaravelKeycloak\Auth\KeycloakAccessToken;
 use Illuminate\Support\Facades\Http;
-use Spatie\ResponseCache\Facades\ResponseCache;
 
 class KeycloakService
 {
@@ -30,11 +29,11 @@ class KeycloakService
         if (is_null($this->retriesRequest)) {
             $this->retriesRequest = config('keycloak-web.retries_request');
         }
-        
+
         if (is_null($this->timeoutRequest)) {
             $this->timeoutRequest = config('keycloak-web.timeout_request');
         }
-        
+
         if (is_null($this->baseUrl)) {
             $this->baseUrl = trim(config('keycloak-web.base_url'), '/');
         }
@@ -112,7 +111,7 @@ class KeycloakService
             'redirect_uri' => $this->callbackUrl,
         ];
 
-        if (! empty($this->clientSecret)) {
+        if (!empty($this->clientSecret)) {
             $params['client_secret'] = $this->clientSecret;
         }
 
@@ -120,8 +119,8 @@ class KeycloakService
 
         try {
 
-            $response = Http::timeout($this->timeoutRequest)->retry($this->retriesRequest,$this->timeoutRequest)->asForm()->post($url, $params);
-            
+            $response = Http::timeout($this->timeoutRequest)->retry($this->retriesRequest, $this->timeoutRequest)->asForm()->post($url, $params);
+
             if ($response->status() === 200) {
                 $token = $response->json();
             }
@@ -146,15 +145,15 @@ class KeycloakService
             'redirect_uri' => $this->callbackUrl,
         ];
 
-        if (! empty($this->clientSecret)) {
+        if (!empty($this->clientSecret)) {
             $params['client_secret'] = $this->clientSecret;
         }
 
         $token = [];
 
         try {
-            $response = Http::timeout($this->timeoutRequest)->retry($this->retriesRequest,$this->timeoutRequest)->asForm()->post($url, $params);
-            
+            $response = Http::timeout($this->timeoutRequest)->retry($this->retriesRequest, $this->timeoutRequest)->asForm()->post($url, $params);
+
             if ($response->status() === 200) {
                 $token = $response->json();
             }
@@ -173,12 +172,12 @@ class KeycloakService
             'refresh_token' => $refreshToken,
         ];
 
-        if (! empty($this->clientSecret)) {
+        if (!empty($this->clientSecret)) {
             $params['client_secret'] = $this->clientSecret;
         }
 
         try {
-            $response = Http::timeout($this->timeoutRequest)->retry($this->retriesRequest,$this->timeoutRequest)->asForm()->post($url, $params);            
+            $response = Http::timeout($this->timeoutRequest)->retry($this->retriesRequest, $this->timeoutRequest)->asForm()->post($url, $params);
             return $response->status() === 204;
         } catch (\Exception $e) {
             $this->logException($e);
@@ -212,7 +211,7 @@ class KeycloakService
                 'Accept' => 'application/json',
             ];
 
-            $response = Http::timeout($this->timeoutRequest)->retry($this->retriesRequest,$this->timeoutRequest)->withHeaders($headers)->get($url);        
+            $response = Http::timeout($this->timeoutRequest)->retry($this->retriesRequest, $this->timeoutRequest)->withHeaders($headers)->get($url);
             if ($response->status() !== 200) {
                 throw new \Exception('Was not able to get userinfo (not 200)');
             }
@@ -239,34 +238,30 @@ class KeycloakService
     {
         session()->put(self::KEYCLOAK_SESSION, $credentials);
         session()->save();
-        ResponseCache::clear();
     }
 
     public function forgetToken()
     {
         session()->forget(self::KEYCLOAK_SESSION);
         session()->save();
-        ResponseCache::clear();
     }
 
     public function validateState($state)
     {
         $challenge = session()->get(self::KEYCLOAK_SESSION_STATE);
-        return (! empty($state) && ! empty($challenge) && $challenge === $state);
+        return (!empty($state) && !empty($challenge) && $challenge === $state);
     }
 
     public function saveState()
     {
         session()->put(self::KEYCLOAK_SESSION_STATE, $this->state);
         session()->save();
-        ResponseCache::clear();
     }
 
     public function forgetState()
     {
         session()->forget(self::KEYCLOAK_SESSION_STATE);
         session()->save();
-        ResponseCache::clear();
     }
 
     public function buildUrl($url, $params)
@@ -276,7 +271,7 @@ class KeycloakService
             return trim($url, '?') . '?' . Arr::query($params);
         }
 
-        if (! empty($parsedUrl['port'])) {
+        if (!empty($parsedUrl['port'])) {
             $parsedUrl['host'] .= ':' . $parsedUrl['port'];
         }
 
@@ -286,7 +281,7 @@ class KeycloakService
         $url = $parsedUrl['scheme'] . '://' . $parsedUrl['host'] . $parsedUrl['path'];
         $query = [];
 
-        if (! empty($parsedUrl['query'])) {
+        if (!empty($parsedUrl['query'])) {
             $parsedUrl['query'] = explode('&', $parsedUrl['query']);
 
             foreach ($parsedUrl['query'] as $value) {
@@ -320,7 +315,7 @@ class KeycloakService
 
     protected function getOpenIdValue($key)
     {
-        if (! $this->openid) {
+        if (!$this->openid) {
             $this->openid = $this->getOpenIdConfiguration();
         }
 
@@ -333,7 +328,7 @@ class KeycloakService
 
         if ($this->cacheOpenid) {
             $configuration = Cache::get($cacheKey, []);
-            if (! empty($configuration)) {
+            if (!empty($configuration)) {
                 return $configuration;
             }
         }
@@ -344,7 +339,7 @@ class KeycloakService
         $configuration = [];
 
         try {
-            $response = Http::timeout($this->timeoutRequest)->retry($this->retriesRequest,$this->timeoutRequest)->get($url);  
+            $response = Http::timeout($this->timeoutRequest)->retry($this->retriesRequest, $this->timeoutRequest)->get($url);
             if ($response->status() === 200) {
                 $configuration = $response->getBody()->getContents();
                 $configuration = json_decode($configuration, true);
@@ -356,7 +351,6 @@ class KeycloakService
         }
 
         if ($this->cacheOpenid) {
-            ResponseCache::clear();
             Cache::put($cacheKey, $configuration);
         }
 
@@ -370,12 +364,12 @@ class KeycloakService
 
     protected function refreshTokenIfNeeded($credentials)
     {
-        if (! is_array($credentials) || empty($credentials['access_token']) || empty($credentials['refresh_token'])) {
+        if (!is_array($credentials) || empty($credentials['access_token']) || empty($credentials['refresh_token'])) {
             return $credentials;
         }
 
         $token = new KeycloakAccessToken($credentials);
-        if (! $token->hasExpired()) {
+        if (!$token->hasExpired()) {
             return $credentials;
         }
 
@@ -386,13 +380,13 @@ class KeycloakService
             return [];
         }
 
-        Static::saveToken($credentials);
+        static::saveToken($credentials);
         return $credentials;
     }
 
     protected function logException(\Exception $e)
     {
-        if (! method_exists($e, 'getResponse') || empty($e->getResponse())) {
+        if (!method_exists($e, 'getResponse') || empty($e->getResponse())) {
             Log::error('[Keycloak Service] ' . $e->getMessage());
             return;
         }
