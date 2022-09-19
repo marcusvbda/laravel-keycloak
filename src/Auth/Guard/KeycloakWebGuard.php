@@ -24,7 +24,7 @@ class KeycloakWebGuard implements Guard
     {
         return (bool) $this->user();
     }
-    
+
     public function hasUser()
     {
         return (bool) $this->user();
@@ -32,7 +32,7 @@ class KeycloakWebGuard implements Guard
 
     public function guest()
     {
-        return ! $this->check();
+        return !$this->check();
     }
 
     public function user()
@@ -85,14 +85,14 @@ class KeycloakWebGuard implements Guard
 
         return true;
     }
-    
+
     public function roles($resource = '')
     {
         if (empty($resource)) {
             $resource = Config::get('keycloak-web.client_id');
         }
 
-        if (! $this->check()) {
+        if (!$this->check()) {
             return false;
         }
 
@@ -105,15 +105,19 @@ class KeycloakWebGuard implements Guard
         $token = new KeycloakAccessToken($token);
         $token = $token->parseAccessToken();
 
-        $resourceRoles = $token['resource_access'] ?? [];
-        $resourceRoles = $resourceRoles[ $resource ] ?? [];
-        $resourceRoles = $resourceRoles['roles'] ?? [];
+
+        $resourceRoles = $token['roles'] ?? [];
+        $resourceRoles = @$resourceRoles[$resource] ? $resourceRoles[$resource] : $resourceRoles;
 
         return $resourceRoles;
     }
-    
+
     public function hasRole($roles, $resource = '')
     {
-        return empty(array_diff((array) $roles, $this->roles($resource)));
+        $roles = $roles ?? [];
+        $roles = is_array($roles) ? $roles : [$roles];
+
+        $resourceRoles = $this->roles($resource);
+        return empty(array_diff((array) $roles, $resourceRoles));
     }
 }
