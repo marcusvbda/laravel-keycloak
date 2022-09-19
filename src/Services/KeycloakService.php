@@ -204,22 +204,22 @@ class KeycloakService
             );
 
             $token->validateIdToken($claims);
-
             $url = $this->getOpenIdValue('userinfo_endpoint');
             $headers = [
                 'Authorization' => 'Bearer ' . $token->getAccessToken(),
                 'Accept' => 'application/json',
             ];
 
-            $response = Http::timeout($this->timeoutRequest)->retry($this->retriesRequest, $this->timeoutRequest)->withHeaders($headers)->get($url);
-            if ($response->status() !== 200) {
-                throw new \Exception('Was not able to get userinfo (not 200)');
-            }
+            $user = Cache::remember(md5($token->getAccessToken() . "user-info"), 60, function () use ($token, $url, $headers) {
+                $response = Http::timeout($this->timeoutRequest)->retry($this->retriesRequest, $this->timeoutRequest)->withHeaders($headers)->get($url);
+                if ($response->status() !== 200) {
+                    throw new \Exception('Was not able to get userinfo (not 200)');
+                }
 
-            $user = $response->getBody()->getContents();
-            $user = json_decode($user, true);
-
-            $token->validateSub($user['sub'] ?? '');
+                $user = $response->getBody()->getContents();
+                $token->validateSub($user['sub'] ?? '');
+                return json_decode($user, true);
+            });
         } catch (\Exception $e) {
             $this->logException($e);
         } catch (Exception $e) {
@@ -324,37 +324,39 @@ class KeycloakService
 
     protected function getOpenIdConfiguration()
     {
-        $cacheKey = 'keycloak_web_guard_openid-' . $this->realm . '-' . md5($this->baseUrl);
-
-        if ($this->cacheOpenid) {
-            $configuration = Cache::get($cacheKey, []);
-            if (!empty($configuration)) {
-                return $configuration;
+        $cacheKey = 'keycloak_web_guard_openid-' . $this->realm . '-';
+        return Cache::remember($cacheKey . "openid", 60, function () use ($cacheKey) {
+            $cacheKey .= md5($this->baseUrl);
+            if ($this->cacheOpenid) {
+                $configuration = Cache::get($cacheKey, []);
+                if (!empty($configuration)) {
+                    return $configuration;
+                }
             }
-        }
 
-        $url = $this->baseUrl . '/realms/' . $this->realm;
-        $url = $url . '/.well-known/openid-configuration';
+            $url = $this->baseUrl . '/realms/' . $this->realm;
+            $url = $url . '/.well-known/openid-configuration';
 
-        $configuration = [];
+            $configuration = [];
 
-        try {
-            $response = Http::timeout($this->timeoutRequest)->retry($this->retriesRequest, $this->timeoutRequest)->get($url);
-            if ($response->status() === 200) {
-                $configuration = $response->getBody()->getContents();
-                $configuration = json_decode($configuration, true);
+            try {
+                $response = Http::timeout($this->timeoutRequest)->retry($this->retriesRequest, $this->timeoutRequest)->get($url);
+                if ($response->status() === 200) {
+                    $configuration = $response->getBody()->getContents();
+                    $configuration = json_decode($configuration, true);
+                }
+            } catch (\Exception $e) {
+                $this->logException($e);
+
+                throw new \Exception('[Keycloak Error] It was not possible to load OpenId configuration: ' . $e->getMessage());
             }
-        } catch (\Exception $e) {
-            $this->logException($e);
 
-            throw new \Exception('[Keycloak Error] It was not possible to load OpenId configuration: ' . $e->getMessage());
-        }
+            if ($this->cacheOpenid) {
+                Cache::put($cacheKey, $configuration);
+            }
 
-        if ($this->cacheOpenid) {
-            Cache::put($cacheKey, $configuration);
-        }
-
-        return $configuration;
+            return $configuration;
+        });
     }
 
     public function getBearerToken()
@@ -364,6 +366,7 @@ class KeycloakService
 
     protected function refreshTokenIfNeeded($credentials)
     {
+        $cacheKey = md5(data_get($credentials, "access_token", ""));
         if (!is_array($credentials) || empty($credentials['access_token']) || empty($credentials['refresh_token'])) {
             return $credentials;
         }
@@ -373,6 +376,7 @@ class KeycloakService
             return $credentials;
         }
 
+        Cache::forget($cacheKey . "user-info");
         $credentials = $this->refreshAccessToken($credentials);
 
         if (empty($credentials['access_token'])) {
