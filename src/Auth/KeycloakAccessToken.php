@@ -10,31 +10,48 @@ class KeycloakAccessToken
     protected $refreshToken;
     protected $idToken;
     protected $expires;
+    protected $lifetimeToken;
 
     public function __construct($data = [])
     {
         $data = (array) $data;
 
-        if (! empty($data['access_token'])) {
+        if (!empty($data['access_token'])) {
             $this->accessToken = $data['access_token'];
         }
 
-        if (! empty($data['refresh_token'])) {
+        if (!empty($data['refresh_token'])) {
             $this->refreshToken = $data['refresh_token'];
         }
 
-        if (! empty($data['id_token'])) {
+        if (!empty($data['id_token'])) {
             $this->idToken = $data['id_token'];
         }
 
-        if (! empty($data['expires_in'])) {
+        if (!empty($data['expires_in'])) {
             $this->expires = (int) $data['expires_in'];
         }
+
+        if (!empty($data['expires_in'])) {
+            $exp = $this->parseAccessToken();
+            $exp = $exp['exp'] ?? '';
+            $this->lifetimeToken = (int) $exp - time();
+        }
+    }
+
+    public function getExpires()
+    {
+        return $this->expires;
     }
 
     public function getAccessToken()
     {
         return $this->accessToken;
+    }
+
+    public function getLifetimeToken()
+    {
+        return $this->lifetimeToken;
     }
 
     public function getRefreshToken()
@@ -51,7 +68,6 @@ class KeycloakAccessToken
     {
         $exp = $this->parseAccessToken();
         $exp = $exp['exp'] ?? '';
-
         return time() >= (int) $exp;
     }
 
@@ -80,7 +96,7 @@ class KeycloakAccessToken
         }
 
         $audience = (array) $token['aud'];
-        if (empty($claims['aud']) || ! in_array($claims['aud'], $audience, true)) {
+        if (empty($claims['aud']) || !in_array($claims['aud'], $audience, true)) {
             throw new Exception('Access Token has a wrong audience: must contain clientId.');
         }
 
@@ -88,7 +104,7 @@ class KeycloakAccessToken
             throw new Exception('Access Token has a wrong audience: must contain azp claim.');
         }
 
-        if (! empty($token['azp']) && $claims['aud'] !== $token['azp']) {
+        if (!empty($token['azp']) && $claims['aud'] !== $token['azp']) {
             throw new Exception('Access Token has a wrong audience: has azp but is not the clientId.');
         }
     }
@@ -113,7 +129,7 @@ class KeycloakAccessToken
 
     protected function parseToken($token)
     {
-        if (! is_string($token)) {
+        if (!is_string($token)) {
             return [];
         }
 

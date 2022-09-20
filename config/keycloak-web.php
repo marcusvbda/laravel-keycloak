@@ -8,8 +8,9 @@ return [
     'client_id' => env('KEYCLOAK_CLIENT_ID', null),
     'client_secret' => env('KEYCLOAK_CLIENT_SECRET', null),
     'cache_openid' => env('KEYCLOAK_CACHE_OPENID', false),
-    'timeout_request' => env('KEYCLOAK_TIMEOUT_REQUEST',10),
-    'retries_request' => env('KEYCLOAK_RETRIES_REQUEST',3),
+    'timeout_request' => env('KEYCLOAK_TIMEOUT_REQUEST', 10),
+    'cache_lifetime' => env('KEYCLOAK_CACHE_LIFE_TIME', 360),
+    'retries_request' => env('KEYCLOAK_RETRIES_REQUEST', 3),
     'redirect_url' => '/admin',
     'routes' => [
         'login' => 'login',

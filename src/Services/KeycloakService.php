@@ -23,6 +23,7 @@ class KeycloakService
     protected $state;
     protected $timeoutRequest;
     protected $retriesRequest;
+    protected $cacheLifetime;
 
     public function __construct()
     {
@@ -61,6 +62,11 @@ class KeycloakService
         if (is_null($this->redirectLogout)) {
             $this->redirectLogout = config('keycloak-web.redirect_logout');
         }
+
+        if (is_null($this->cacheLifetime)) {
+            $this->cacheLifetime = config('keycloak-web.cache_lifetime');
+        }
+
 
         $this->state = $this->generateRandomState();
     }
@@ -189,7 +195,6 @@ class KeycloakService
     public function getUserProfile($credentials)
     {
         $credentials = $this->refreshTokenIfNeeded($credentials);
-
         $user = [];
         try {
             $token = new KeycloakAccessToken($credentials);
@@ -210,7 +215,7 @@ class KeycloakService
                 'Accept' => 'application/json',
             ];
 
-            $user = Cache::remember(md5($token->getAccessToken() . "user-info"), 60, function () use ($token, $url, $headers) {
+            $user = Cache::remember(md5($token->getAccessToken()) . "-user-info", $token->getLifetimeToken(), function () use ($token, $url, $headers) {
                 $response = Http::timeout($this->timeoutRequest)->retry($this->retriesRequest, $this->timeoutRequest)->withHeaders($headers)->get($url);
                 if ($response->status() !== 200) {
                     throw new \Exception('Was not able to get userinfo (not 200)');
@@ -325,7 +330,7 @@ class KeycloakService
     protected function getOpenIdConfiguration()
     {
         $cacheKey = 'keycloak_web_guard_openid-' . $this->realm . '-';
-        return Cache::remember($cacheKey . "openid", 60, function () use ($cacheKey) {
+        return Cache::remember($cacheKey . "-openid",  $this->cacheLifetime, function () use ($cacheKey) {
             $cacheKey .= md5($this->baseUrl);
             if ($this->cacheOpenid) {
                 $configuration = Cache::get($cacheKey, []);
@@ -376,7 +381,7 @@ class KeycloakService
             return $credentials;
         }
 
-        Cache::forget($cacheKey . "user-info");
+        Cache::forget($cacheKey . "-user-info");
         $credentials = $this->refreshAccessToken($credentials);
 
         if (empty($credentials['access_token'])) {
