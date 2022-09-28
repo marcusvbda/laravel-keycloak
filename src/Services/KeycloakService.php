@@ -215,16 +215,14 @@ class KeycloakService
                 'Accept' => 'application/json',
             ];
 
-            $user = Cache::remember(md5($token->getAccessToken()) . "-user-info", $token->getLifetimeToken(), function () use ($token, $url, $headers) {
-                $response = Http::timeout($this->timeoutRequest)->retry($this->retriesRequest, $this->timeoutRequest)->withHeaders($headers)->get($url);
-                if ($response->status() !== 200) {
-                    throw new \Exception('Was not able to get userinfo (not 200)');
-                }
+            $response = Http::timeout($this->timeoutRequest)->retry($this->retriesRequest, $this->timeoutRequest)->withHeaders($headers)->get($url);
+            if ($response->status() !== 200) {
+                throw new \Exception('Was not able to get userinfo (not 200)');
+            }
 
-                $user = $response->getBody()->getContents();
-                $token->validateSub($user['sub'] ?? '');
-                return json_decode($user, true);
-            });
+            $user = $response->getBody()->getContents();
+            $token->validateSub($user['sub'] ?? '');
+            return json_decode($user, true);
         } catch (\Exception $e) {
             $this->logException($e);
         } catch (Exception $e) {
@@ -371,7 +369,6 @@ class KeycloakService
 
     protected function refreshTokenIfNeeded($credentials)
     {
-        $cacheKey = md5(data_get($credentials, "access_token", ""));
         if (!is_array($credentials) || empty($credentials['access_token']) || empty($credentials['refresh_token'])) {
             return $credentials;
         }
@@ -381,7 +378,6 @@ class KeycloakService
             return $credentials;
         }
 
-        Cache::forget($cacheKey . "-user-info");
         $credentials = $this->refreshAccessToken($credentials);
 
         if (empty($credentials['access_token'])) {
