@@ -79,7 +79,6 @@ class KeycloakWebGuard implements Guard
             KeycloakWeb::forgetToken();
             return false;
         }
-
         $user = $this->provider->retrieveByCredentials($user);
         $this->setUser($user);
 

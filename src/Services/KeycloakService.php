@@ -325,6 +325,29 @@ class KeycloakService
         return Arr::get($this->openid, $key);
     }
 
+    public static function checkTokenJWT($token)
+    {
+        $service = new static;
+
+        $headers = [
+            'Authorization' => 'Bearer ' . $token,
+            'Accept' => 'application/json',
+        ];
+        $url = $service->getOpenIdValue('userinfo_endpoint');
+
+        try {
+            $response = Http::timeout($service->timeoutRequest)->retry($service->retriesRequest, $service->timeoutRequest)->withHeaders($headers)->get($url);
+            if ($response->status() !== 200) {
+                throw new \Exception('Was not able to get userinfo (not 200)');
+            }
+
+            $user = $response->getBody()->getContents();
+            return json_decode($user, true);
+        } catch (\Exception $e) {
+            return false;
+        }
+    }
+
     protected function getOpenIdConfiguration()
     {
         $cacheKey = 'keycloak_web_guard_openid-' . $this->realm . '-';
