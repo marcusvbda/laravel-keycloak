@@ -210,23 +210,35 @@ class KeycloakService
 
             $token->validateIdToken($claims);
             $url = $this->getOpenIdValue('userinfo_endpoint');
+            
             $headers = [
                 'Authorization' => 'Bearer ' . $token->getAccessToken(),
                 'Accept' => 'application/json',
             ];
 
-            $response = Http::timeout($this->timeoutRequest)->retry($this->retriesRequest, $this->timeoutRequest)->withHeaders($headers)->get($url);
-            if ($response->status() !== 200) {
+            $cache_hash = md5("getUserProfile-".data_get($headers,"Authorization","none").$this->cacheLifetime);
+
+            $response =  Cache::remember($cache_hash, 60*$this->cacheLifetime, function () use($headers,$url){
+                $resp = Http::timeout($this->timeoutRequest)
+                ->retry($this->retriesRequest, $this->timeoutRequest)
+                ->withHeaders($headers)
+                ->get($url);
+
+                return (object)[
+                    "status" => $resp->status(),
+                    "body" => $resp->getBody()->getContents()
+                ];
+            });
+            
+            if ($response->status !== 200) {
                 throw new \Exception('Was not able to get userinfo (not 200)');
             }
 
-            $user = $response->getBody()->getContents();
+            $user = $response->body;
             $token->validateSub($user['sub'] ?? '');
             return json_decode($user, true);
         } catch (\Exception $e) {
             $this->logException($e);
-        } catch (Exception $e) {
-            Log::error('[Keycloak Service] ' . print_r($e->getMessage(), true));
         }
 
         return $user;
@@ -414,14 +426,14 @@ class KeycloakService
 
     protected function logException(\Exception $e)
     {
-        if (!method_exists($e, 'getResponse') || empty($e->getResponse())) {
+        if (!method_exists($e, 'getResponse') || empty(@$e->getResponse())) {
             Log::error('[Keycloak Service] ' . $e->getMessage());
             return;
         }
 
         $error = [
-            'request' => method_exists($e, 'getRequest') ? $e->getRequest() : '',
-            'response' => $e->getResponse()->getBody()->getContents(),
+            'request' => method_exists($e, 'getRequest') ? @$e->getRequest() : '',
+            'response' => @$e->getResponse()->getBody()->getContents(),
         ];
 
         Log::error('[Keycloak Service] ' . print_r($error, true));
